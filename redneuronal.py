@@ -3,7 +3,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.callbacks import EarlyStopping
 import tensorflow as tf
 
 # Cargar el dataset desde GitHub
@@ -55,12 +57,15 @@ X, y, label_encoder = preprocesar_dataset(df)
 # Dividir el dataset en entrenamiento y validación
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Crear el modelo de red neuronal
+# Crear el modelo de red neuronal mejorado
 def crear_modelo():
     model = Sequential([
-        Dense(64, activation='relu', input_shape=(6,)),  # Capa oculta con 64 neuronas
-        Dense(32, activation='relu'),  # Capa oculta con 32 neuronas
-        Dense(16, activation='relu'),  # Capa oculta con 16 neuronas
+        Dense(128, activation='relu', input_shape=(6,), kernel_regularizer=l2(0.01)),  # Capa oculta con 128 neuronas y regularización L2
+        Dropout(0.3),  # Dropout para evitar sobreajuste
+        Dense(64, activation='relu', kernel_regularizer=l2(0.01)),  # Capa oculta con 64 neuronas
+        Dropout(0.3),  # Dropout
+        Dense(32, activation='relu', kernel_regularizer=l2(0.01)),  # Capa oculta con 32 neuronas
+        Dense(16, activation='relu', kernel_regularizer=l2(0.01)),  # Capa oculta con 16 neuronas
         Dense(3, activation='softmax')  # Capa de salida con 3 neuronas (para 3 clases: débil, media, fuerte)
     ])
     
@@ -70,8 +75,18 @@ def crear_modelo():
 # Crear el modelo
 model = crear_modelo()
 
+# Early Stopping para evitar sobreajuste
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
 # Entrenar el modelo
-history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_val, y_val), verbose=1)
+history = model.fit(
+    X_train, y_train,
+    epochs=100,  # Aumentamos el número de épocas
+    batch_size=32,
+    validation_data=(X_val, y_val),
+    callbacks=[early_stopping],
+    verbose=1
+)
 
 # Guardar el modelo entrenado
 model.save("password_strength_model.h5")
