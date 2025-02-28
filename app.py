@@ -127,51 +127,50 @@ def groq_analysis(password):
         return f"**Error:** {str(e)}"
 
 # ========== FUNCIONES DE LA RED NEURONAL ==========
+# Lista de nombres comunes
+NOMBRES_COMUNES = {"Diego", "juan", "Maria", "pedro", "Sofia", "carlos", "Ana", "jose", "Luis", "laura", "Fernando", "andrea", "Miguel", "camila", "Ricardo", "valentina", "Daniel", "karla", "Jorge", "soledad"}
+PATRONES_DEBILES = {"123", "abc", "qwerty", "password", "111", "000", "654321"}
+
+# Función para extraer características
+
+def extraer_caracteristicas(password):
+    password_lower = password.lower()
+    return np.array([
+        len(password),  # Longitud
+        sum(c.islower() for c in password),  # Cantidad de minúsculas
+        sum(c.isupper() for c in password),  # Cantidad de mayúsculas
+        sum(c.isdigit() for c in password),  # Cantidad de números
+        sum(c in "!@#$%^&*()-_=+[]{};:'\"|\\,.<>?/" for c in password),  # Símbolos
+        int(any(seq in password_lower for seq in PATRONES_DEBILES)),  # Patrones débiles
+        int(any(name.lower() in password_lower for name in NOMBRES_COMUNES))  # Nombres comunes
+    ])
+
+# Creación del modelo
+
 def crear_modelo():
     model = Sequential([
-        Dense(32, activation='relu', input_shape=(6,)),  # Aumentamos a 6 características
+        Dense(64, activation='relu', input_shape=(7,)),  # 7 características
+        Dense(32, activation='relu'),
         Dense(16, activation='relu'),
-        Dense(3, activation='softmax')
+        Dense(3, activation='softmax')  # 3 clases de salida
     ])
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
 
+# Entrenamiento del modelo
+
 def entrenar_modelo(model, X, y):
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
-    history = model.fit(X_train, y_train, epochs=5, batch_size=16, validation_data=(X_val, y_val), verbose=0)
+    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val), verbose=1)
     model.save("password_strength_model.h5")
     return model, history
 
+# Predicción de la fortaleza
+
 def predecir_fortaleza(model, password):
-    features = np.array([
-        len(password),
-        int(any(c.isupper() for c in password)),
-        int(any(c.isdigit() for c in password)),
-        int(any(c in "!@#$%^&*()" for c in password)),
-        int(password.lower() in ["diego", "juan", "maria", "pedro", "media"]),  # Nombres comunes
-        int("123" in password or "abc" in password.lower() or "809" in password)  # Secuencias comunes
-    ]).reshape(1, 6)  # Asegurarse de que tenga la forma correcta (1, 6)
-    
+    features = extraer_caracteristicas(password).reshape(1, -1)
     prediction = model.predict(features, verbose=0)
     return np.argmax(prediction)  # 0: débil, 1: media, 2: fuerte
-
-def explicar_fortaleza(password):
-    explicaciones = []
-    if len(password) >= 12:
-        explicaciones.append("✅ Longitud adecuada (más de 12 caracteres)")
-    else:
-        explicaciones.append("❌ Longitud insuficiente (menos de 12 caracteres)")
-    if any(c.isupper() for c in password):
-        explicaciones.append("✅ Contiene mayúsculas")
-    if any(c.isdigit() for c in password):
-        explicaciones.append("✅ Contiene números")
-    if any(c in "!@#$%^&*()" for c in password):
-        explicaciones.append("✅ Contiene símbolos especiales")
-    if password.lower() in ["diego", "juan", "maria", "pedro", "media"]:
-        explicaciones.append("❌ Contiene un nombre común")
-    if "123" in password or "abc" in password.lower() or "809" in password:
-        explicaciones.append("❌ Contiene una secuencia simple")
-    return explicaciones
 
 # ========== PREPROCESAR DATASET ==========
 def preprocesar_dataset(df):
