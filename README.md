@@ -75,7 +75,7 @@ Total	131	4,675 parámetros
   Usuario → Extracción de Features → Normalización → Red Neuronal → Probabilidades → Clase Final
 
 **Dinámica de Entrenamiento**
-  1. Dataset: 500 contraseñas generadas por Groq/LLama3
+  1. Dataset: 14.500 contraseñas extraidas de la dark web
   2. Optimización:
      * Función de Pérdida: sparse_categorical_crossentropy
      * Optimizador: Adam (tasa de aprendizaje adaptativa)
